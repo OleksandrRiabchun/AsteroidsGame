@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using AsteroidsGame.Exceptions;
+using AsteroidsGame.Logging;
 
 namespace AsteroidsGame
 {
@@ -12,14 +12,15 @@ namespace AsteroidsGame
 
         private static BufferedGraphicsContext _context;
         private static BaseObject[] _backgroundObjects;
-        
+
         private static Asteroid[] _asteroids;
         private static Medicine[] _medics;
         private static Ship _ship;
-        private static readonly IList<Bullet> _bullets = new List<Bullet>();
 
         private static readonly Timer _timer = new Timer();
         private static readonly Random _rnd = new Random();
+
+        private static readonly ILogger[] _loggers = { new ConsoleLogger() };
 
         /// <summary>
         /// Ширина игрового поля
@@ -56,35 +57,24 @@ namespace AsteroidsGame
 
             // Связываем буфер в памяти с графическим объектом. Для того, чтобы рисовать в буфере 
             Buffer = _context.Allocate(g, new Rectangle(0, 0, Width, Height));
+            _ship = new Ship(new Point(10, 400), new Point(5, 5), new Size(10, 10));
+
             Load();
 
             _timer.Interval = 100;
             _timer.Start();
             _timer.Tick += RegularUpdateView;
             form.KeyDown += OnKeyDown;
-            Ship.Died += Finish;
+            _ship.Died += Finish;
+            _ship.LogAction += OnLog;
+
+            OnLog(new LogMessage(typeof(Game), "Началась новая игра", DateTime.Now));
         }
 
-        public static void Draw()
+        private static void OnLog(LogMessage log)
         {
-            // Вывод графики
-            Buffer.Graphics.Clear(Color.Black);
-            foreach (var obj in _backgroundObjects)
-                obj.Draw();
-            
-            foreach (var a in _asteroids)
-                a?.Draw();
-
-            foreach (var m in _medics)
-                m?.Draw();
-
-            foreach (var bullet in _bullets)
-                bullet?.Draw();
-
-            _ship.Draw();
-            Buffer.Graphics.DrawString("Energy:" + _ship.Energy, SystemFonts.DefaultFont, Brushes.White, 0, 0);
-            Buffer.Graphics.DrawString("Score:" + _ship.CurrentScore, SystemFonts.DefaultFont, Brushes.White, 0, 20);
-            Buffer.Render();
+            foreach (var logger in _loggers)
+                logger.Write($"{log.Timestamp}\t{log.Message} - {log.Sender}");
         }
 
         /// <summary>
@@ -92,8 +82,6 @@ namespace AsteroidsGame
         /// </summary>
         private static void Load()
         {
-            _ship = new Ship(new Point(10, 400), new Point(5, 5), new Size(10, 10));
-            
             _backgroundObjects = new BaseObject[30];
             _asteroids = new Asteroid[10];
             _medics = new Medicine[5];
@@ -109,15 +97,34 @@ namespace AsteroidsGame
             {
                 var size = _rnd.Next(MIN_OBJ_SIZE, 50);
                 _asteroids[i] = new Asteroid(new Point(800, _rnd.Next(0, Height)), new Point(-size / 5, size), new
-                Size(size, size), size);
+                                                 Size(size, size), size);
             }
 
             for (var i = 0; i < _medics.Length; i++)
             {
                 var dir = _rnd.Next(MIN_OBJ_SIZE, 20);
                 _medics[i] = new Medicine(new Point(1000, _rnd.Next(0, Height)), new Point(-dir / 5, dir),
-                    new Size(width: 20, height: 20));
+                                          new Size(width: 20, height: 20));
             }
+        }
+
+        public static void Draw()
+        {
+            // Вывод графики
+            Buffer.Graphics.Clear(Color.Black);
+            foreach (var obj in _backgroundObjects)
+                obj.Draw();
+
+            foreach (var a in _asteroids)
+                a?.Draw();
+
+            foreach (var m in _medics)
+                m?.Draw();
+
+            _ship.Draw();
+            Buffer.Graphics.DrawString("Energy:" + _ship.Energy, SystemFonts.DefaultFont, Brushes.White, 0, 0);
+            Buffer.Graphics.DrawString("Score:" + _ship.CurrentScore, SystemFonts.DefaultFont, Brushes.White, 0, 20);
+            Buffer.Render();
         }
 
         /// <summary>
@@ -128,35 +135,20 @@ namespace AsteroidsGame
             foreach (var obj in _backgroundObjects)
                 obj.Update();
 
-            for (var i = 0; i < _bullets.Count; i++)
-            {
-                if (_bullets[i] == null || _bullets[i].IsAbroad)
-                {
-                    _bullets.RemoveAt(i);
-                    continue;
-                }
+            _ship.Update();
 
-                _bullets[i].Update();
-            }
-
-            for(var i = 0; i < _asteroids.Length; i++)
+            for (var i = 0; i < _asteroids.Length; i++)
             {
                 _asteroids[i]?.Update();
 
-                for (var j = 0; j < _bullets.Count; j++)
+                if (_ship.CheckGoal(_asteroids[i]))
                 {
-                    if (_asteroids[i] != null && _bullets[j] != null && 
-                        _bullets[j].Collision(_asteroids[i])) //пуля с астероидом
-                    {
-                        _ship.ScoreHigh(1);
-                        System.Media.SystemSounds.Hand.Play();
-                        _asteroids[i] = null;
-                        _bullets.RemoveAt(j);
-                    }
+                    System.Media.SystemSounds.Hand.Play();
+                    _asteroids[i] = null;
                 }
 
                 if (_asteroids[i] == null) continue;
-                
+
                 if (_ship.Collision(_asteroids[i])) //корабль с астероидом
                 {
                     _ship.EnergyLow(_asteroids[i].Power);
@@ -187,17 +179,18 @@ namespace AsteroidsGame
         /// <param name="e"></param>
         private static void OnKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.ControlKey)
+            switch (e.KeyCode)
             {
-                var bullet = new Bullet(
-                    new Point(_ship.Rect.X + 10, _ship.Rect.Y + 4),
-                    new Point(4, 0), new Size(4, 1));
-                _bullets.Add(bullet);
+                case Keys.ControlKey:
+                    _ship.Shot();
+                    break;
+                case Keys.Up:
+                    _ship.Up();
+                    break;
+                case Keys.Down:
+                    _ship.Down();
+                    break;
             }
-            if (e.KeyCode == Keys.Up)
-                _ship.Up();
-            if (e.KeyCode == Keys.Down)
-                _ship.Down();
         }
 
         /// <summary>
@@ -205,6 +198,7 @@ namespace AsteroidsGame
         /// </summary>
         private static void Finish()
         {
+            OnLog(new LogMessage(typeof(Game), "Игра закончилась", DateTime.Now));
             _timer.Stop();
             Buffer.Graphics.DrawString("The End", new Font(FontFamily.GenericSansSerif, 60, FontStyle.Underline),
                                         Brushes.White, 200, 100);
