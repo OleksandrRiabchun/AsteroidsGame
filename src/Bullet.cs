@@ -1,20 +1,24 @@
-﻿using System.Drawing; 
+﻿using System.Drawing;
 
-namespace OOP2
+namespace AsteroidsGame
 {
-    class Bullet : BaseObject
-    {        
-        public Bullet(Point pos, Point dir, Size size) : base(pos, dir, size)
+    internal class Bullet : BaseObject
+    {
+        public int Speed { get; }
+
+        public bool IsAbroad => _pos.X > Game.Width;
+
+        public Bullet(Point pos, Point dir, Size size, int speed = 10) 
+            : base(pos, dir, size)
         {
+            Speed = speed;
         }
+
         public override void Draw()
         {
-            Game._buffer.Graphics.DrawRectangle(Pens.OrangeRed, pos.X, pos.Y, size.Width, size.Height);
+            Game.Buffer.Graphics.DrawRectangle(Pens.OrangeRed, _pos.X, _pos.Y, _size.Width, _size.Height);
         }
-        public override void Update()
-        {
-            pos.X = pos.X + 7;             
-        }
-        
+
+        public override void Update() => _pos.X += Speed;
     }
 }

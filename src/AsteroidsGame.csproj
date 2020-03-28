@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{6B25EFE5-1F4E-49D1-A8B8-897DE44D42B8}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>OOP2</RootNamespace>
-    <AssemblyName>OOP2</AssemblyName>
+    <RootNamespace>AsteroidsGame</RootNamespace>
+    <AssemblyName>AsteroidsGame</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -50,7 +50,7 @@
     <Compile Include="Bullet.cs" />
     <Compile Include="Exceptions\CustomException.cs" />
     <Compile Include="Game.cs" />
-    <Compile Include="Medic.cs" />
+    <Compile Include="Medicine.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Ship.cs" />

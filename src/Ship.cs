@@ -1,59 +1,65 @@
-﻿using System.Drawing;
- 
-namespace OOP2
+﻿using System;
+using System.Drawing;
+
+namespace AsteroidsGame
 {
-    class Ship : BaseObject
+    internal class Ship : BaseObject
     {
-        public static event Message MessageDie;
-        const int maxEnergy = 100;
-        int energy = maxEnergy;
-        int point = 0;
-        public int Points
-        {
-            get { return point; }
-        }
-        
-        public void Point(int a)
-        {
-            point += a;
-        }
-        public int Energy
-        {
-            get { return energy; }
-        }
-        public void EnergyLow(int n) // Уменьшение енергии
-        {
-             energy -= n; 
-        }
-        public void EnergyHigh(int n) // Добавление енергии
-        {
-            if ((energy + n) >= maxEnergy)
-                energy = maxEnergy;
-            else
-                energy += n;
-        }
+        public const int MIN_ENERGY = 1;
+        public const int MAX_ENERGY = 100;
+
+        public int CurrentScore { get; private set; }
+
+        public int Energy { get; private set; } = MAX_ENERGY;
+
+        public static event Action Died;
+
         public Ship(Point pos, Point dir, Size size) : base(pos, dir, size)
         {
         }
+
+        /// <summary>
+        /// Уменьшение енергии
+        /// </summary>
+        /// <param name="n"></param>
+        public void EnergyLow(int n)
+        {
+             Energy -= n; 
+        }
+
+        /// <summary>
+        /// Добавление енергии
+        /// </summary>
+        /// <param name="n"></param>
+        public void EnergyHigh(int n)
+        {
+            if (Energy + n >= MAX_ENERGY)
+                Energy = MAX_ENERGY;
+            else
+                Energy += n;
+        }
+
+        public void ScoreHigh(int a) => CurrentScore += a;
+
         public override void Draw()
         {
-            Game._buffer.Graphics.FillEllipse(Brushes.Wheat, pos.X, pos.Y, size.Width, size.Height);
+            Game.Buffer.Graphics.FillEllipse(Brushes.Wheat, _pos.X, _pos.Y, _size.Width, _size.Height);
         }
+
         public override void Update()
         {
         }
+
         public void Up()
         {
-            if (pos.Y > 0) pos.Y = pos.Y - dir.Y;
+            if (_pos.Y > 0) _pos.Y -= _dir.Y;
         }
+
         public void Down()
         {
-            if (pos.Y < Game.Height) pos.Y = pos.Y + dir.Y;
+            if (_pos.Y < Game.Height) _pos.Y += _dir.Y;
         }
-        public void Die()
-        {
-            if (MessageDie != null)            
-                MessageDie();            
-        }
+
+        public void RaiseDie() => Died?.Invoke();
     }
 }
