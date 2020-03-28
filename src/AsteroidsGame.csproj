@@ -48,8 +48,11 @@
     <Compile Include="Asteroid.cs" />
     <Compile Include="BaseObject.cs" />
     <Compile Include="Bullet.cs" />
+    <Compile Include="Logging\ConsoleLogger.cs" />
     <Compile Include="Exceptions\CustomException.cs" />
     <Compile Include="Game.cs" />
+    <Compile Include="Logging\ILogger.cs" />
+    <Compile Include="LogMessage.cs" />
     <Compile Include="Medicine.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -58,11 +61,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="data.txt">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

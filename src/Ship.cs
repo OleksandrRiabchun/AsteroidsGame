@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 
 namespace AsteroidsGame
@@ -13,6 +13,7 @@ namespace AsteroidsGame
         public int Energy { get; private set; } = MAX_ENERGY;
 
         public static event Action Died;
+        public event Action<LogMessage> LogAction;
 
         public Ship(Point pos, Point dir, Size size) : base(pos, dir, size)
         {
@@ -25,6 +26,7 @@ namespace AsteroidsGame
         public void EnergyLow(int n)
         {
              Energy -= n; 
+             RaiseLog("Нанесен урон кораблю", DateTime.Now);
         }
 
         /// <summary>
@@ -36,7 +38,10 @@ namespace AsteroidsGame
             if (Energy + n >= MAX_ENERGY)
                 Energy = MAX_ENERGY;
             else
+            {
                 Energy += n;
+                RaiseLog("Получил енергию", DateTime.Now);
+            }
         }
 
         public void ScoreHigh(int a) => CurrentScore += a;
@@ -60,6 +65,15 @@ namespace AsteroidsGame
             if (_pos.Y < Game.Height) _pos.Y += _dir.Y;
         }
 
-        public void RaiseDie() => Died?.Invoke();
+        public void RaiseLog(string message, DateTime timestamp)
+        {
+            LogAction?.Invoke(new LogMessage(this, message, timestamp));
+        }
+
+        public void RaiseDie()
+        {
+            Died?.Invoke();
+            LogAction?.Invoke(new LogMessage(this, "Корабель сбит", DateTime.Now));
+        }
     }
 }
