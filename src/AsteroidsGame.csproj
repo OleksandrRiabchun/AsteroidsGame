@@ -48,6 +48,7 @@
     <Compile Include="Asteroid.cs" />
     <Compile Include="BaseObject.cs" />
     <Compile Include="Bullet.cs" />
+    <Compile Include="Logging\FileLogger.cs" />
     <Compile Include="Logging\ConsoleLogger.cs" />
     <Compile Include="Exceptions\CustomException.cs" />
     <Compile Include="Game.cs" />

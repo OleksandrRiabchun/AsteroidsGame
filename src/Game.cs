@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using AsteroidsGame.Exceptions;
@@ -10,17 +11,19 @@ namespace AsteroidsGame
     {
         private const int MAX_SIZE_OF_DISPLAY = 1000;
 
+        private static int _NumberOfAsteroids = 3;
+
         private static BufferedGraphicsContext _context;
         private static BaseObject[] _backgroundObjects;
 
-        private static Asteroid[] _asteroids;
+        private static List<Asteroid> _asteroids;
         private static Medicine[] _medics;
         private static Ship _ship;
 
         private static readonly Timer _timer = new Timer();
         private static readonly Random _rnd = new Random();
 
-        private static readonly ILogger[] _loggers = { new ConsoleLogger() };
+        private static readonly ILogger[] _loggers = { new ConsoleLogger(), new FileLogger() };
 
         /// <summary>
         /// Ширина игрового поля
@@ -83,7 +86,7 @@ namespace AsteroidsGame
         private static void Load()
         {
             _backgroundObjects = new BaseObject[30];
-            _asteroids = new Asteroid[10];
+            _asteroids = new List<Asteroid>(_NumberOfAsteroids);
             _medics = new Medicine[5];
             const int MIN_OBJ_SIZE = 5;
 
@@ -93,11 +96,11 @@ namespace AsteroidsGame
                 _backgroundObjects[i] = new Star(new Point(800, _rnd.Next(0, Height)), new Point(-dir, dir), new Size(3, 3));
             }
 
-            for (var i = 0; i < _asteroids.Length; i++)
+            for (var i = 0; i < _NumberOfAsteroids; i++)
             {
                 var size = _rnd.Next(MIN_OBJ_SIZE, 50);
-                _asteroids[i] = new Asteroid(new Point(800, _rnd.Next(0, Height)), new Point(-size / 5, size), new
-                                                 Size(size, size), size);
+                _asteroids.Add(new Asteroid(new Point(800, _rnd.Next(0, Height)), new Point(-size / 5, size), new
+                                                 Size(size, size), size));
             }
 
             for (var i = 0; i < _medics.Length; i++)
@@ -113,7 +116,7 @@ namespace AsteroidsGame
             // Вывод графики
             Buffer.Graphics.Clear(Color.Black);
             foreach (var obj in _backgroundObjects)
-                obj.Draw();
+                obj?.Draw();
 
             foreach (var a in _asteroids)
                 a?.Draw();
@@ -137,24 +140,35 @@ namespace AsteroidsGame
 
             _ship.Update();
 
-            for (var i = 0; i < _asteroids.Length; i++)
+            if (_asteroids.Count != 0) // Если астероиды закончились то создаем новую коллекцию
             {
-                _asteroids[i]?.Update();
-
-                if (_ship.CheckGoal(_asteroids[i]))
+                for (var i = 0; i < _asteroids.Count; i++)
                 {
-                    System.Media.SystemSounds.Hand.Play();
-                    _asteroids[i] = null;
+                    _asteroids[i]?.Update();
+
+                    if (_ship.Collision(_asteroids[i]))  
+                    {
+                        _ship.EnergyLow(_asteroids[i].Power);
+                        System.Media.SystemSounds.Asterisk.Play();
+                        if (_ship.Energy < Ship.MIN_ENERGY)
+                            _ship.RaiseDie();
+                    }
+
+                    if (_ship.CheckGoal(_asteroids[i]))
+                    {
+                        System.Media.SystemSounds.Hand.Play();                        
+                        _asteroids.RemoveAt(i);                        
+                    }                     
                 }
-
-                if (_asteroids[i] == null) continue;
-
-                if (_ship.Collision(_asteroids[i])) //корабль с астероидом
+            }
+            else
+            {
+                _asteroids = new List<Asteroid>(++_NumberOfAsteroids);
+                for (var i = 0; i < _NumberOfAsteroids; i++)
                 {
-                    _ship.EnergyLow(_asteroids[i].Power);
-                    System.Media.SystemSounds.Asterisk.Play();
-                    if (_ship.Energy < Ship.MIN_ENERGY)
-                        _ship.RaiseDie();
+                    var size = _rnd.Next(5, 50);
+                    _asteroids.Add(new Asteroid(new Point(800, _rnd.Next(0, Height)), new Point(-size / 5, size), new
+                                                     Size(size, size), size));
                 }
             }
 

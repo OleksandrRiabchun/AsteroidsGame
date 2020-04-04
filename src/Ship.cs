@@ -28,8 +28,8 @@ namespace AsteroidsGame
         /// <param name="n"></param>
         public void EnergyLow(int n)
         {
-             Energy -= n; 
-             RaiseLog("Нанесен урон кораблю", DateTime.Now);
+             Energy -= n / 2; 
+             RaiseLog("Нанесен урон кораблю", DateTime.Now);            
         }
 
         /// <summary>
@@ -113,7 +113,7 @@ namespace AsteroidsGame
         public void RaiseDie()
         {
             Died?.Invoke();
-            LogAction?.Invoke(new LogMessage(this, "Корабель сбит", DateTime.Now));
+            LogAction?.Invoke(new LogMessage(this, "Корабль сбит", DateTime.Now));
         }
     }
 }
