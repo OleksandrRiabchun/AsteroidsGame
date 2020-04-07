@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace OOP2.Exceptions
+namespace AsteroidsGame.Exceptions
 {
     internal class CustomException : Exception
     {

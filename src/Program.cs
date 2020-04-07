@@ -1,6 +1,6 @@
 ﻿using System.Windows.Forms;
 
-namespace OOP2
+namespace AsteroidsGame
 {
     internal class Program
     {
@@ -12,10 +12,19 @@ namespace OOP2
                 Height = 800
             };
 
-            Game.Init(form);
-            form.Show();
-            Game.Draw();
-            Application.Run(form);            
+            try
+            {
+                Game.Init(form);
+
+                form.Show();
+                Game.Draw();
+                Application.Run(form);  
+            }
+            catch (Exceptions.CustomException ex)
+            {
+                MessageBox.Show(ex.Message, "Ошибка!");
+                Application.Exit();
+            }
         }
     }
 }

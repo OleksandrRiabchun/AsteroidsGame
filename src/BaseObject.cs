@@ -1,40 +1,32 @@
-﻿using System.Drawing; 
+﻿using System.Drawing;
 
-namespace OOP2
+namespace AsteroidsGame
 {
-    delegate void Message();
-    interface ICollision
+    internal interface ICollision
     {
         bool Collision(ICollision obj);
         Rectangle Rect { get; }
     }
 
-    abstract class BaseObject : ICollision
+    internal abstract class BaseObject : ICollision
     {
-        protected Point pos;
-        protected Point dir;
-        protected Size size;
+        protected Point _pos;
+        protected Point _dir;
+        protected Size _size;
 
-        public BaseObject(Point pos, Point dir, Size size)
+        protected BaseObject(Point pos, Point dir, Size size)
         {
-            this.pos = pos;
-            this.dir = dir;
-            this.size = size;
-        }
-        abstract public void Draw();
-
-        abstract public void Update();         
-
-        public bool Collision(ICollision o)
-        {
-            if (o.Rect.IntersectsWith(this.Rect))
-                return true;
-            else return false;
-        }
-        public Rectangle Rect
-        {
-            get { return new Rectangle(pos, size); }
+            _pos = pos;
+            _dir = dir;
+            _size = size;
         }
 
+        public abstract void Draw();
+
+        public abstract void Update();
+
+        public bool Collision(ICollision o) => o.Rect.IntersectsWith(this.Rect);
+
+        public Rectangle Rect => new Rectangle(_pos, _size);
     }
 }

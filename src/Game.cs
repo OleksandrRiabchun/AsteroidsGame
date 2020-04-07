@@ -1,43 +1,54 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
-using System.IO;
 using System.Windows.Forms;
-using OOP2.Exceptions;
+using AsteroidsGame.Exceptions;
+using AsteroidsGame.Logging;
 
-namespace OOP2
+namespace AsteroidsGame
 {
-    internal class Game
+    internal static class Game
     {
         private const int MAX_SIZE_OF_DISPLAY = 1000;
 
-        private BufferedGraphicsContext _context;
-        private BufferedGraphics _buffer;
-        private BaseObject[] _objs;
-        private Bullet _bullet;
-        private Asteroid[] _asteroids;
-        private readonly Ship _ship = new Ship(new Point(10, 400), new Point(5, 5), new Size(10, 10));
-        private readonly Timer _timer = new Timer();
-        private readonly Random _rnd = new Random();
-        private Medic[] _medic;
+        private static int _NumberOfAsteroids = 3;
+
+        private static BufferedGraphicsContext _context;
+        private static BaseObject[] _backgroundObjects;
+
+        private static List<Asteroid> _asteroids;
+        private static Medicine[] _medics;
+        private static Ship _ship;
+
+        private static readonly Timer _timer = new Timer();
+        private static readonly Random _rnd = new Random();
+
+        private static readonly ILogger[] _loggers = { new ConsoleLogger(), new FileLogger() };
 
         /// <summary>
         /// Ширина игрового поля
         /// </summary>
-        public int Width { get; set; }
+        public static int Width { get; private set; }
 
         /// <summary>
         /// Высота игрового поля
         /// </summary>
-        public int Height { get; set; }
+        public static int Height { get; private set; }
 
-        public Game(Form form)
+        public static BufferedGraphics Buffer { get; private set; }
+
+        /// <summary>
+        /// Инициализация игры
+        /// </summary>
+        /// <exception cref="CustomException">При вводе недопустимного размера формы</exception>
+        /// <param name="form"></param>
+        public static void Init(Form form)
         {
             var g = form.CreateGraphics();              // Графическое устройство для вывода графики
             _context = BufferedGraphicsManager.Current; // предоставляет доступ к главному буферу 
 
-            if (form.Width <= MAX_SIZE_OF_DISPLAY
-             && form.Width > 0
-             && form.Height <= MAX_SIZE_OF_DISPLAY && form.Height > 0)
+            if (form.Width <= MAX_SIZE_OF_DISPLAY && form.Width > 0
+                                                 && form.Height <= MAX_SIZE_OF_DISPLAY && form.Height > 0)
             {
                 Width = form.Width;
                 Height = form.Height;
@@ -48,141 +59,170 @@ namespace OOP2
             }
 
             // Связываем буфер в памяти с графическим объектом. Для того, чтобы рисовать в буфере 
-            _buffer = _context.Allocate(g, new Rectangle(0, 0, Width, Height));
+            Buffer = _context.Allocate(g, new Rectangle(0, 0, Width, Height));
+            _ship = new Ship(new Point(10, 400), new Point(5, 5), new Size(10, 10));
+
             Load();
+
             _timer.Interval = 100;
             _timer.Start();
-            _timer.Tick += Timer_Tick;
-            form.KeyDown += Form_KeyDown;
-            Ship.MessageDie += Finish;
-        }
-        
-        private void Form_KeyDown(object sender, KeyEventArgs e) // Обработка события нажатия клавиш
-        {
-            if (e.KeyCode == Keys.ControlKey)
-                _bullet = new Bullet(new Point(_ship.Rect.X + 10, _ship.Rect.Y + 4),
-                new Point(4, 0), new Size(4, 1));
-            if (e.KeyCode == Keys.Up)
-                _ship.Up();
-            if (e.KeyCode == Keys.Down)
-                _ship.Down();
+            _timer.Tick += RegularUpdateView;
+            form.KeyDown += OnKeyDown;
+            _ship.Died += Finish;
+            _ship.LogAction += OnLog;
+
+            OnLog(new LogMessage(typeof(Game), "Началась новая игра", DateTime.Now));
         }
 
-        static public void Finish()//Завершение игры
+        private static void OnLog(LogMessage log)
         {
-            _timer.Stop();
-            Journal();
-            _buffer.Graphics.DrawString("The End", new Font(FontFamily.GenericSansSerif, 60, FontStyle.Underline),
-            Brushes.White, 200, 100);
-            _buffer.Render();
+            foreach (var logger in _loggers)
+                logger.Write($"{log.Timestamp}\t{log.Message} - {log.Sender}");
         }
 
-        static void Journal() //ведение журнала в консоль и в файл
+        /// <summary>
+        /// Инициализация обьектов
+        /// </summary>
+        private static void Load()
         {
-            Message message = () =>
+            _backgroundObjects = new BaseObject[30];
+            _asteroids = new List<Asteroid>(_NumberOfAsteroids);
+            _medics = new Medicine[5];
+            const int MIN_OBJ_SIZE = 5;
+
+            for (var i = 0; i < _backgroundObjects.Length; i++)
             {
-                using (StreamWriter sw = new StreamWriter(@"C:\Users\Олександр\source\repos\OOP2\OOP2\data.txt", false))
-                {
-                    sw.WriteLine($"Energy: {_ship.Energy}, Points: {_ship.Points}, Date: { DateTime.Now}");
-                }
-                Console.WriteLine($"Energy: {_ship.Energy}, Points: {_ship.Points}, Date: { DateTime.Now}");
-            };
-            message();
+                var dir = _rnd.Next(MIN_OBJ_SIZE, 50);
+                _backgroundObjects[i] = new Star(new Point(800, _rnd.Next(0, Height)), new Point(-dir, dir), new Size(3, 3));
+            }
+
+            for (var i = 0; i < _NumberOfAsteroids; i++)
+            {
+                var size = _rnd.Next(MIN_OBJ_SIZE, 50);
+                _asteroids.Add(new Asteroid(new Point(800, _rnd.Next(0, Height)), new Point(-size / 5, size), new
+                                                 Size(size, size), size));
+            }
+
+            for (var i = 0; i < _medics.Length; i++)
+            {
+                var dir = _rnd.Next(MIN_OBJ_SIZE, 20);
+                _medics[i] = new Medicine(new Point(1000, _rnd.Next(0, Height)), new Point(-dir / 5, dir),
+                                          new Size(width: 20, height: 20));
+            }
         }
 
         public static void Draw()
         {
             // Вывод графики
-            _buffer.Graphics.Clear(Color.Black);
-            foreach (BaseObject obj in _objs)
-                obj.Draw();
-            foreach (Asteroid a in _asteroids)
-                if (a != null)
-                    a.Draw();
-            if (_bullet != null)
-                _bullet.Draw();
-            foreach (Medic m in _medic)
-                if (m != null)
-                    m.Draw();
+            Buffer.Graphics.Clear(Color.Black);
+            foreach (var obj in _backgroundObjects)
+                obj?.Draw();
+
+            foreach (var a in _asteroids)
+                a?.Draw();
+
+            foreach (var m in _medics)
+                m?.Draw();
+
             _ship.Draw();
-            _buffer.Graphics.DrawString("Energy:" + _ship.Energy, SystemFonts.DefaultFont, Brushes.White, 0, 0);
-            _buffer.Graphics.DrawString("Points:" + _ship.Points, SystemFonts.DefaultFont, Brushes.White, 0, 20);
-            _buffer.Render();
+            Buffer.Graphics.DrawString("Energy:" + _ship.Energy, SystemFonts.DefaultFont, Brushes.White, 0, 0);
+            Buffer.Graphics.DrawString("Score:" + _ship.CurrentScore, SystemFonts.DefaultFont, Brushes.White, 0, 20);
+            Buffer.Render();
         }
 
-        public static void Load() // Инициализация обьектов
+        /// <summary>
+        /// Меняем состояние обьектов
+        /// </summary>
+        private static void Update()
         {
-            _objs = new BaseObject[30];
-            //bullet = new Bullet(new Point(0, 200), new Point(5, 0), new Size(4, 1));
-            _asteroids = new Asteroid[10];
-            _medic = new Medic[5];
-            for (int i = 0; i < _objs.Length; i++)
-            {
-                int r = rnd.Next(5, 50);
-                _objs[i] = new Star(new Point(800, rnd.Next(0, Game.Height)), new Point(-r, r), new Size(3, 3));
-            }
-            for (int i = 0; i < _asteroids.Length; i++)
-            {
-                int r = rnd.Next(5, 50);
-                _asteroids[i] = new Asteroid(new Point(800, rnd.Next(0, Game.Height)), new Point(-r / 5, r), new
-                Size(r, r));
-            }
-            for (int i = 0; i < _medic.Length; i++)
-            {
-                int r = rnd.Next(5, 20);
-                _medic[i] = new Medic(new Point(1000, Game.rnd.Next(0, Game.Height)), new Point(-r / 5, r),
-                    new Size(20, 20));
-            }
-        }
-
-        public static void Update() // Меняем состояние обьектов
-        {
-            foreach (BaseObject obj in _objs)
+            foreach (var obj in _backgroundObjects)
                 obj.Update();
 
-            if (_bullet != null)
-                _bullet.Update();
-            for (int i = 0; i < _asteroids.Length; i++)
+            _ship.Update();
+
+            if (_asteroids.Count != 0) // Если астероиды закончились то создаем новую коллекцию
             {
-                if (_asteroids[i] != null)
+                for (var i = 0; i < _asteroids.Count; i++)
                 {
-                    _asteroids[i].Update();
-                    if (_bullet != null && _bullet.Collision(_asteroids[i]))//пуля с астероидом
+                    _asteroids[i]?.Update();
+
+                    if (_ship.Collision(_asteroids[i]))  
                     {
-                        _ship.Point(1);
-                        System.Media.SystemSounds.Hand.Play();
-                        _asteroids[i] = null;
-                        _bullet = null;
-                        continue;
-                    }
-                    if (_ship.Collision(_asteroids[i]))//корабль с астероидом
-                    {
-                        _ship.EnergyLow(5);
+                        _ship.EnergyLow(_asteroids[i].Power);
                         System.Media.SystemSounds.Asterisk.Play();
-                        if (_ship.Energy <= 0)
-                            _ship.Die();
+                        if (_ship.Energy < Ship.MIN_ENERGY)
+                            _ship.RaiseDie();
                     }
+
+                    if (_ship.CheckGoal(_asteroids[i]))
+                    {
+                        System.Media.SystemSounds.Hand.Play();                        
+                        _asteroids.RemoveAt(i);                        
+                    }                     
                 }
             }
-            for (int i = 0; i < _medic.Length; i++)
+            else
             {
-                _medic[i].Update();
-                if (_ship.Collision(_medic[i]))//корабль с аптечкой
+                _asteroids = new List<Asteroid>(++_NumberOfAsteroids);
+                for (var i = 0; i < _NumberOfAsteroids; i++)
                 {
-                    if (_ship.Energy <= 100)
+                    var size = _rnd.Next(5, 50);
+                    _asteroids.Add(new Asteroid(new Point(800, _rnd.Next(0, Height)), new Point(-size / 5, size), new
+                                                     Size(size, size), size));
+                }
+            }
+
+            foreach (var medic in _medics)
+            {
+                medic.Update();
+                if (_ship.Collision(medic)) //корабль с аптечкой
+                {
+                    if (_ship.Energy <= Ship.MAX_ENERGY)
                     {
-                        _ship.EnergyHigh(5);
+                        _ship.EnergyHigh(medic.Health);
                         System.Media.SystemSounds.Asterisk.Play();
                     }
                 }
             }
         }
 
-        private static void Timer_Tick(object sender, EventArgs e)
+        /// <summary>
+        /// Обработка события нажатия клавиш
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private static void OnKeyDown(object sender, KeyEventArgs e)
+        {
+            switch (e.KeyCode)
+            {
+                case Keys.ControlKey:
+                    _ship.Shot();
+                    break;
+                case Keys.Up:
+                    _ship.Up();
+                    break;
+                case Keys.Down:
+                    _ship.Down();
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Завершение игры
+        /// </summary>
+        private static void Finish()
+        {
+            OnLog(new LogMessage(typeof(Game), "Игра закончилась", DateTime.Now));
+            _timer.Stop();
+            Buffer.Graphics.DrawString("The End", new Font(FontFamily.GenericSansSerif, 60, FontStyle.Underline),
+                                        Brushes.White, 200, 100);
+            Buffer.Render();
+        }
+
+        private static void RegularUpdateView(object sender, EventArgs e)
         {
             Draw();
             Update();
         }
     }
 }
-
