@@ -48,7 +48,7 @@ namespace AsteroidsGame
             _context = BufferedGraphicsManager.Current; // предоставляет доступ к главному буферу 
 
             if (form.Width <= MAX_SIZE_OF_DISPLAY && form.Width > 0
-                                                 && form.Height <= MAX_SIZE_OF_DISPLAY && form.Height > 0)
+               && form.Height <= MAX_SIZE_OF_DISPLAY && form.Height > 0)
             {
                 Width = form.Width;
                 Height = form.Height;
@@ -109,7 +109,7 @@ namespace AsteroidsGame
                 _medics[i] = new Medicine(new Point(1000, _rnd.Next(0, Height)), new Point(-dir / 5, dir),
                                           new Size(width: 20, height: 20));
             }
-        }
+        } 
 
         public static void Draw()
         {

@@ -116,4 +116,4 @@ namespace AsteroidsGame
             LogAction?.Invoke(new LogMessage(this, "Корабль сбит", DateTime.Now));
         }
     }
-}
+} 
